@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS-Sentinel - Security Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-shield-alt"></i> JS-Sentinel</h1>
+            <p class="subtitle">Análise avançada de arquivos JavaScript para detecção de vulnerabilidades e dados sensíveis</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;">
+                <i class="fas fa-server"></i> Desenvolvido por <strong>mftheux</strong>
+            </p>
+        </header>
+
+        <div class="input-section">
+            <div class="input-tabs">
+                <button class="tab-btn active" data-tab="single">URL Única</button>
+                <button class="tab-btn" data-tab="multiple">Múltiplas URLs</button>
+                <button class="tab-btn" data-tab="file">Upload de Arquivo</button>
+                
+                <button id="clearAllBtn" class="tab-btn" style="margin-left: auto; color: var(--danger);">
+                    <i class="fas fa-trash-alt"></i> Limpar Tudo
+                </button>
+            </div>
+
+            <div id="single-tab" class="tab-content active">
+                <div class="input-group">
+                    <input type="text" id="jsUrl" placeholder="Digite a URL do arquivo JavaScript (ex: https://example.com/app.js)" />
+                    <button id="analyzeBtn" class="btn-primary">
+                        <i class="fas fa-search"></i> Analisar
+                    </button>
+                </div>
+            </div>
+
+            <div id="multiple-tab" class="tab-content hidden">
+                <div class="input-group-vertical">
+                    <textarea id="multipleUrls" placeholder="Digite múltiplas URLs, uma por linha&#10;Exemplo:&#10;https://example.com/app.js&#10;https://example.com/lib.js" rows="6"></textarea>
+                    <button id="analyzeMultipleBtn" class="btn-primary">
+                        <i class="fas fa-search"></i> Analisar Todas
+                    </button>
+                </div>
+            </div>
+
+            <div id="file-tab" class="tab-content hidden">
+                <div class="input-group-vertical">
+                    <label for="urlFile" class="file-label">
+                        <i class="fas fa-upload"></i> Escolha um arquivo (.txt, .csv, .json)
+                        <input type="file" id="urlFile" accept=".txt,.csv,.json" style="display: none;" />
+                    </label>
+                    <div id="fileName" class="file-name hidden"></div>
+                    <button id="analyzeFileBtn" class="btn-primary" disabled>
+                        <i class="fas fa-search"></i> Analisar Arquivo
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
+                <i class="fas fa-info-circle"></i> Para arquivos locais, use <code>localhost</code> ou <code>127.0.0.1</code>
+            </div>
+            
+            <div id="loading" class="loading hidden" style="background: rgba(99, 102, 241, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid var(--primary);">
+                <i class="fas fa-spinner fa-spin fa-lg"></i> 
+                <span id="loading-text" style="font-weight: bold; margin-left: 10px;">Iniciando análise... aguarde</span>
+            </div>
+        </div>
+
+        <div id="error" class="error hidden"></div>
+
+        <div id="files-section" class="files-section hidden">
+            <h2>Arquivos Analisados</h2>
+            <div id="files-grid" class="files-grid"></div>
+        </div>
+
+        <div id="results" class="results hidden">
+            <div class="results-header">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 id="results-title">Resultados da Análise</h2>
+                    <button id="backToFiles" class="btn-secondary hidden">
+                        <i class="fas fa-arrow-left"></i> Voltar para Arquivos
+                    </button>
+                </div>
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="all">Tudo</button>
+                    <button class="filter-btn" data-filter="api_keys">Chaves API</button>
+                    <button class="filter-btn" data-filter="credentials">Credenciais</button>
+                    <button class="filter-btn" data-filter="high_entropy_strings">Alta Entropia</button>
+                    <button class="filter-btn" data-filter="emails">Emails</button>
+                    <button class="filter-btn" data-filter="xss">Vulnerabilidades XSS</button>
+                    <button class="filter-btn" data-filter="api_endpoints">Endpoints API</button>
+                    <button class="filter-btn" data-filter="parameters">Parâmetros</button>
+                    <button class="filter-btn" data-filter="paths">Caminhos</button>
+                    <button class="filter-btn" data-filter="comments">Comentários</button>
+                </div>
+            </div>
+
+            <div class="summary">
+                <div class="stat-card">
+                    <i class="fas fa-key"></i>
+                    <div>
+                        <span class="stat-value" id="stat-api-keys">0</span>
+                        <span class="stat-label">Chaves API</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-lock"></i>
+                    <div>
+                        <span class="stat-value" id="stat-credentials">0</span>
+                        <span class="stat-label">Credenciais</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-random"></i>
+                    <div>
+                        <span class="stat-value" id="stat-entropy">0</span>
+                        <span class="stat-label">Alta Entropia</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-envelope"></i>
+                    <div>
+                        <span class="stat-value" id="stat-emails">0</span>
+                        <span class="stat-label">Emails</span>
+                    </div>
+                </div>
+                <div class="stat-card danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <span class="stat-value" id="stat-xss">0</span>
+                        <span class="stat-label">XSS/Vulns</span>
+                    </div>
+                </div>
+                 <div class="stat-card">
+                    <i class="fas fa-code-branch"></i>
+                    <div>
+                        <span class="stat-value" id="stat-endpoints">0</span>
+                        <span class="stat-label">Endpoints</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="findings-container">
+                <div id="findings-content"></div>
+            </div>
+        </div>
+        
+        <footer style="text-align: center; margin-top: 60px; padding: 30px 0; border-top: 1px solid var(--border); color: var(--text-muted);">
+            <p style="margin-bottom: 15px;">
+                <strong>JS-Sentinel</strong> desenvolvido por <span style="color: var(--primary); font-weight: bold;">mftheux</span>
+            </p>
+            <p style="margin-top: 20px; font-size: 0.85rem;">
+                Ferramenta para uso exclusivo em testes de segurança autorizados.
+            </p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        // Correção aplicada diretamente no app.js, não é mais necessário sobrescrever aqui
+    </script>
+</body>
+</html>
